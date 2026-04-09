@@ -1,12 +1,16 @@
-import yfinance as yf
-import pandas as pd
+class Backtester:
+    def __init__(self, data, strategy):
+        self.data = data
+        self.strategy = strategy
 
-def load_data(tickers=['TSLA', 'NVDA'], start='2020-01-01', end=None):
-    df = yf.download(tickers, start=start, end=end, auto_adjust=True, progress=False)
-    if isinstance(df.columns, pd.MultiIndex):
-        df = df.xs('Close', axis=1, level=0)
-    else:
-        ticker = tickers[0]
-        df = df[['Close']].rename(columns={'Close': ticker})
-    df.dropna(inplace=True)
-    return df
+    def run(self):
+        df = self.strategy.generate_signals()
+
+        df['market_returns'] = df['Close'].pct_change()
+
+        # Position is now scaled (not just 0/1)
+        df['strategy_returns'] = df['position'] * df['market_returns']
+
+        df['equity_curve'] = (1 + df['strategy_returns']).cumprod()
+
+        return df
