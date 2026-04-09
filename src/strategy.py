@@ -9,8 +9,8 @@ class MovingAverageVolatilityStrategy:
         slow_window=50,
         vol_window=20,
         vol_threshold=0.01,
-        target_vol=0.02,   # target portfolio volatility
-        max_leverage=2.0   # cap position size
+        target_vol=0.02,
+        max_leverage=2.0
     ):
         self.data = data.copy()
         self.fast_window = fast_window
