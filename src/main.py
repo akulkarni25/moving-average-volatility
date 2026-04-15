@@ -9,10 +9,10 @@ from visualizer import Visualizer
 
 def main():
     # 1. Download data
-    tickers = ["TSLA", "NVDA"]
-    data = yf.download(tickers, start="2020-01-01", end="2024-01-01")
+    tickers = ["TSLA", "NVDA", "QLD"]
+    data = yf.download(tickers, start="2026-01-01", end="2026-04-01")
 
-    df = data["Close"]["TSLA"].to_frame(name="Close")
+    df = data["Close"]["NVDA"].to_frame(name="Close")
 
     # 2. Initialize strategy
     strategy = MovingAverageVolatilityStrategy(
@@ -31,11 +31,8 @@ def main():
 
     # 4. Performance
     perf = Performance(results)
-    metrics = perf.compute()
-
-    print("\nPerformance Metrics:")
-    for k, v in metrics.items():
-        print(f"{k}: {v:.4f}")
+    metrics = perf.performance_summary(results)
+    print(metrics)
 
     # 5. Plot
     viz = Visualizer(results)

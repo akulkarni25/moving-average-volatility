@@ -23,8 +23,24 @@ class Visualizer:
         axs[2].set_title("Position Sizing")
 
         # Equity curve
-        axs[3].plot(self.df['equity_curve'], label='Equity Curve', color='green')
-        axs[3].set_title("Strategy Performance")
+        axs[3].plot(self.df['equity_curve'], label='Strategy', color='green')
+        axs[3].plot(self.df['stock_equity'], label='Buy & Hold (Stock)', linestyle='--', color='blue')
+        axs[3].plot(self.df['spy_equity'], label='S&P 500 (SPY)', linestyle=':', color='red')
+        axs[3].set_title("Strategy vs Benchmarks")
+        axs[3].legend()
 
         plt.tight_layout()
+        plt.show()
+
+    @staticmethod
+    def plot_equity_curves(df):
+        plt.figure(figsize=(12, 6))
+
+        plt.plot(df.index, df['equity_curve'], label='Strategy', linewidth=2)
+        plt.plot(df.index, df['stock_equity'], label='Buy & Hold (Stock)', linestyle='--')
+        plt.plot(df.index, df['spy_equity'], label='S&P 500 (SPY)', linestyle=':')
+
+        plt.title("Strategy vs Benchmarks")
+        plt.legend()
+        plt.grid()
         plt.show()
