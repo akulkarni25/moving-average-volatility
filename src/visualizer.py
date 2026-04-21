@@ -1,46 +1,58 @@
 import matplotlib.pyplot as plt
+import yfinance as yf
+import pandas as pd
 
 class Visualizer:
-    def __init__(self, df):
-        self.df = df
+    def __init__(self, portfolio_values, data_dict, start_date="2020-01-01", end_date="2024-01-01"):
+        """
+        portfolio_values: list or pd.Series of total portfolio values over time
+        data_dict: dictionary of stock dataframes {ticker: df}
+        start_date, end_date: used for downloading SPY benchmark
+        """
+        self.portfolio_values = pd.Series(portfolio_values, index=data_dict[list(data_dict.keys())[0]].index)
+        self.data_dict = data_dict
+        self.start_date = start_date
+        self.end_date = end_date
 
     def plot(self):
-        fig, axs = plt.subplots(4, 1, figsize=(12, 12), sharex=True)
+        """
+        Plots equity curves and benchmark comparisons.
+        """
+        fig, axs = plt.subplots(2, 1, figsize=(12, 10), sharex=True)
 
-        # Price + MAs
-        axs[0].plot(self.df['Close'], label='Price')
-        axs[0].plot(self.df['fast_ma'], label='Fast MA')
-        axs[0].plot(self.df['slow_ma'], label='Slow MA')
+        # 1. Portfolio equity curve
+        axs[0].plot(self.portfolio_values, label="Portfolio Strategy", color='green', linewidth=2)
+        axs[0].set_title("Portfolio Equity Curve")
+        axs[0].set_ylabel("Portfolio Value ($)")
         axs[0].legend()
-        axs[0].set_title("Price & Moving Averages")
+        axs[0].grid(True)
 
-        # Volatility
-        axs[1].plot(self.df['volatility'], label='Volatility', color='orange')
-        axs[1].set_title("Volatility")
+        # 2. Compare against buy-and-hold and SPY
+        axs[1].set_title("Strategy vs Buy & Hold vs S&P 500")
+        for ticker, df in self.data_dict.items():
+            buy_hold = df["Close"] / df["Close"].iloc[0] * 10000  # normalize to $10k initial capital
+            axs[1].plot(df.index, buy_hold, linestyle="--", label=f"Buy & Hold ({ticker})")
 
-        # Position size
-        axs[2].plot(self.df['position'], label='Position Size', color='purple')
-        axs[2].set_title("Position Sizing")
+        # SPY benchmark
+        spy_df = yf.download("SPY", start=self.start_date, end=self.end_date).dropna()
+        spy_df.index = spy_df.index.tz_localize(None)  # remove timezone
+        spy_equity = spy_df["Close"] / spy_df["Close"].iloc[0] * 10000
+        axs[1].plot(spy_df.index, spy_equity, linestyle=":", color="red", label="S&P 500 (SPY)")
 
-        # Equity curve
-        axs[3].plot(self.df['equity_curve'], label='Strategy', color='green')
-        axs[3].plot(self.df['stock_equity'], label='Buy & Hold (Stock)', linestyle='--', color='blue')
-        axs[3].plot(self.df['spy_equity'], label='S&P 500 (SPY)', linestyle=':', color='red')
-        axs[3].set_title("Strategy vs Benchmarks")
-        axs[3].legend()
+        # Portfolio curve
+        axs[1].plot(self.portfolio_values.index, self.portfolio_values, color='green', linewidth=2, label="Strategy")
+
+        axs[1].set_ylabel("Portfolio Value ($)")
+        axs[1].legend()
+        axs[1].grid(True)
 
         plt.tight_layout()
         plt.show()
 
     @staticmethod
-    def plot_equity_curves(df):
-        plt.figure(figsize=(12, 6))
-
-        plt.plot(df.index, df['equity_curve'], label='Strategy', linewidth=2)
-        plt.plot(df.index, df['stock_equity'], label='Buy & Hold (Stock)', linestyle='--')
-        plt.plot(df.index, df['spy_equity'], label='S&P 500 (SPY)', linestyle=':')
-
-        plt.title("Strategy vs Benchmarks")
-        plt.legend()
-        plt.grid()
-        plt.show()
+    def plot_equity_curves(portfolio_values, data_dict, start_date="2020-01-01", end_date="2024-01-01"):
+        """
+        Static method for quick plotting
+        """
+        viz = Visualizer(portfolio_values, data_dict, start_date, end_date)
+        viz.plot()

@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 
+
 class MovingAverageVolatilityStrategy:
     def __init__(
         self,
@@ -20,41 +21,32 @@ class MovingAverageVolatilityStrategy:
         self.target_vol = target_vol
         self.max_leverage = max_leverage
 
-    def generate_signals(self):
+    def generate_signal(self):
+        """
+        Returns a pandas Series of signals:
+            1  -> buy
+            0  -> hold
+           -1  -> sell
+        Logic:
+            - Buy when fast MA > slow MA and volatility is below threshold
+            - Sell when fast MA < slow MA or volatility above threshold
+        """
         df = self.data.copy()
+        # 1. Moving averages
+        df["fast_ma"] = df["Close"].rolling(self.fast_window).mean()
+        df["slow_ma"] = df["Close"].rolling(self.slow_window).mean()
 
-        # Moving averages
-        df['fast_ma'] = df['Close'].rolling(self.fast_window).mean()
-        df['slow_ma'] = df['Close'].rolling(self.slow_window).mean()
+        # 2. Rolling volatility (std of returns)
+        df["returns"] = df["Close"].pct_change()
+        df["vol"] = df["returns"].rolling(self.vol_window).std()
 
-        # Returns + volatility
-        df['returns'] = df['Close'].pct_change()
-        df['volatility'] = df['returns'].rolling(self.vol_window).std()
+        # 3. Signal logic
+        signals = pd.Series(0, index=df.index)  # default hold
 
-        # Base signal (trend + volatility filter)
-        df['signal'] = 0
+        buy_condition = (df["fast_ma"] > df["slow_ma"]) & (df["vol"] < self.vol_threshold)
+        sell_condition = (df["fast_ma"] < df["slow_ma"]) | (df["vol"] > self.vol_threshold)
 
-        long_condition = (
-            (df['fast_ma'] > df['slow_ma']) &
-            (df['volatility'] > self.vol_threshold)
-        )
+        signals[buy_condition] = 1
+        signals[sell_condition] = -1
 
-        df.loc[long_condition, 'signal'] = 1
-
-        # --- NEW: Position sizing ---
-        # Avoid division by zero
-        df['volatility'] = df['volatility'].replace(0, np.nan)
-
-        # Position size = target_vol / actual_vol
-        df['position_size'] = self.target_vol / df['volatility']
-
-        # Cap leverage
-        df['position_size'] = df['position_size'].clip(upper=self.max_leverage)
-
-        # Apply signal (only take position when signal = 1)
-        df['position'] = df['signal'] * df['position_size']
-
-        # Shift to avoid lookahead bias
-        df['position'] = df['position'].shift(1).fillna(0)
-
-        return df
+        return signals
