@@ -4,7 +4,7 @@ class Backtester:
         self.strategy = strategy
 
     def run(self):
-        df = self.strategy.generate_signals()
+        df = self.strategy.generate_signal()
 
         df['market_returns'] = df['Close'].pct_change()
 

@@ -1,30 +1,51 @@
 import matplotlib.pyplot as plt
+import pandas as pd
+
 
 class Visualizer:
-    def __init__(self, df):
-        self.df = df
+    def __init__(self, equity_curve, price_series=None, returns_series=None):
+        self.equity = equity_curve
+        self.price = price_series
+        self.returns = returns_series
 
     def plot(self):
-        fig, axs = plt.subplots(4, 1, figsize=(12, 12), sharex=True)
 
-        # Price + MAs
-        axs[0].plot(self.df['Close'], label='Price')
-        axs[0].plot(self.df['fast_ma'], label='Fast MA')
-        axs[0].plot(self.df['slow_ma'], label='Slow MA')
+        fig, axs = plt.subplots(3, 1, figsize=(12, 10), sharex=True)
+
+        # =========================
+        # 1. EQUITY CURVE
+        # =========================
+        axs[0].plot(self.equity, label="Equity Curve", color="green")
+        axs[0].set_title("Portfolio Equity Curve")
         axs[0].legend()
-        axs[0].set_title("Price & Moving Averages")
 
-        # Volatility
-        axs[1].plot(self.df['volatility'], label='Volatility', color='orange')
-        axs[1].set_title("Volatility")
+        # =========================
+        # 2. STRATEGY RETURNS (NEW)
+        # =========================
+        if self.returns is not None:
+            axs[1].plot(self.returns, label="Daily Returns", color="purple", alpha=0.7)
+            axs[1].set_title("Strategy Daily Returns")
+            axs[1].axhline(0, color="black", linewidth=1)
+            axs[1].legend()
 
-        # Position size
-        axs[2].plot(self.df['position'], label='Position Size', color='purple')
-        axs[2].set_title("Position Sizing")
+            # optional smoothing (rolling mean)
+            rolling = pd.Series(self.returns).rolling(20).mean()
+            axs[1].plot(rolling, label="20D Avg Return", color="orange")
 
-        # Equity curve
-        axs[3].plot(self.df['equity_curve'], label='Equity Curve', color='green')
-        axs[3].set_title("Strategy Performance")
+        else:
+            axs[1].text(0.5, 0.5, "No returns data provided",
+                        ha="center", va="center")
+
+        # =========================
+        # 3. PRICE (OPTIONAL)
+        # =========================
+        if self.price is not None:
+            axs[2].plot(self.price, label="Price", color="blue")
+            axs[2].set_title("Reference Asset Price")
+            axs[2].legend()
+        else:
+            axs[2].text(0.5, 0.5, "No price data provided",
+                        ha="center", va="center")
 
         plt.tight_layout()
         plt.show()

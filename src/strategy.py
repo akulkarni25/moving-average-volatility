@@ -1,16 +1,17 @@
 import pandas as pd
 import numpy as np
 
+
 class MovingAverageVolatilityStrategy:
     def __init__(
         self,
-        data,
-        fast_window=20,
-        slow_window=50,
-        vol_window=20,
-        vol_threshold=0.01,
-        target_vol=0.02,
-        max_leverage=2.0
+        data: pd.DataFrame,
+        fast_window: int = 20,
+        slow_window: int = 50,
+        vol_window: int = 20,
+        vol_threshold: float = 0.01,
+        target_vol: float = 0.02,
+        max_leverage: float = 2.0
     ):
         self.data = data.copy()
         self.fast_window = fast_window
@@ -20,41 +21,21 @@ class MovingAverageVolatilityStrategy:
         self.target_vol = target_vol
         self.max_leverage = max_leverage
 
-    def generate_signals(self):
+    def generate_signal(self):
         df = self.data.copy()
 
-        # Moving averages
-        df['fast_ma'] = df['Close'].rolling(self.fast_window).mean()
-        df['slow_ma'] = df['Close'].rolling(self.slow_window).mean()
+        df["returns"] = df["Close"].pct_change()
+        df["vol"] = df["returns"].rolling(self.vol_window).std()
 
-        # Returns + volatility
-        df['returns'] = df['Close'].pct_change()
-        df['volatility'] = df['returns'].rolling(self.vol_window).std()
+        df["fast_ma"] = df["Close"].rolling(self.fast_window).mean()
+        df["slow_ma"] = df["Close"].rolling(self.slow_window).mean()
 
-        # Base signal (trend + volatility filter)
-        df['signal'] = 0
+        df["trend"] = np.where(df["fast_ma"] > df["slow_ma"], 1, -1)
 
-        long_condition = (
-            (df['fast_ma'] > df['slow_ma']) &
-            (df['volatility'] > self.vol_threshold)
-        )
+        momentum = df["trend"] * (df["fast_ma"] / df["slow_ma"] - 1)
 
-        df.loc[long_condition, 'signal'] = 1
+        df["weight"] = momentum / (df["vol"] + 1e-8)
 
-        # --- NEW: Position sizing ---
-        # Avoid division by zero
-        df['volatility'] = df['volatility'].replace(0, np.nan)
+        df["weight"] = df["weight"].replace([np.inf, -np.inf], 0).fillna(0)
 
-        # Position size = target_vol / actual_vol
-        df['position_size'] = self.target_vol / df['volatility']
-
-        # Cap leverage
-        df['position_size'] = df['position_size'].clip(upper=self.max_leverage)
-
-        # Apply signal (only take position when signal = 1)
-        df['position'] = df['signal'] * df['position_size']
-
-        # Shift to avoid lookahead bias
-        df['position'] = df['position'].shift(1).fillna(0)
-
-        return df
+        return df[["weight"]]
